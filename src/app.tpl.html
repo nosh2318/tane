@@ -1,0 +1,735 @@
+<title>たねの掛け合わせ</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@700;900&family=Noto+Sans+JP:wght@400;500;700&display=swap">
+<style>
+/* Layout: 上に3つの枠（業界 × 持ち物 × 相手）、その下に選ぶチップ。3つそろうと、下に「融合したレール」と元になった実在の事例が出る */
+:root{
+  --bg:#f6f3ec; --paper:#ffffff; --ink:#24211c; --muted:#6a6358; --line:#e2dccf;
+  --s1:#2f6fd6; --s1-soft:#e3edfc; --s2:#d2691e; --s2-soft:#fcebdc; --s3:#2f8f48; --s3-soft:#e0f1df;
+  --accent:#24211c; --accent-ink:#ffffff; --hi:#fff6c8; --ai:#7a4fd6; --ai-soft:#efe8fc;
+  --display:"Zen Maru Gothic","Hiragino Maru Gothic ProN","Noto Sans JP",sans-serif;
+  --body:"Noto Sans JP","Hiragino Sans","Yu Gothic",sans-serif;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#171613; --paper:#211f1b; --ink:#eeeae2; --muted:#aaa294; --line:#3a362f;
+  --s1:#7aa9f5; --s1-soft:#1d2b44; --s2:#f0a060; --s2-soft:#3b2818; --s3:#68c27a; --s3-soft:#1f3526;
+  --accent:#eeeae2; --accent-ink:#171613; --hi:#3a3418; --ai:#b79af5; --ai-soft:#2c2340; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#171613; --paper:#211f1b; --ink:#eeeae2; --muted:#aaa294; --line:#3a362f;
+  --s1:#7aa9f5; --s1-soft:#1d2b44; --s2:#f0a060; --s2-soft:#3b2818; --s3:#68c27a; --s3-soft:#1f3526;
+  --accent:#eeeae2; --accent-ink:#171613; --hi:#3a3418; --ai:#b79af5; --ai-soft:#2c2340; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);line-height:1.65;margin:0}
+.page{max-width:1080px;margin:0 auto;padding-block:24px 64px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+h1{font-family:var(--display);font-weight:900;font-size:clamp(1.5rem,4.6vw,2.2rem);margin:0 0 4px;text-wrap:balance}
+.lead{color:var(--muted);margin:0 0 18px;max-width:44em}
+h2{font-family:var(--display);font-size:1.2rem;margin:28px 0 8px}
+.sub{color:var(--muted);font-size:.85rem;margin:-4px 0 12px}
+button{font:inherit;cursor:pointer}
+button:focus-visible{outline:3px solid var(--s2);outline-offset:2px}
+
+/* 3つの枠 */
+.slots{display:grid;grid-template-columns:1fr auto 1fr auto 1fr auto .8fr;gap:8px;align-items:stretch}
+.x{align-self:center;font-family:var(--display);font-weight:900;font-size:1.4rem;color:var(--muted)}
+.slot{border:2px dashed var(--line);background:var(--paper);border-radius:18px;padding:10px 12px;text-align:left;min-height:84px;color:var(--ink);display:flex;flex-direction:column;gap:2px;min-width:0}
+.slot small{font-size:.72rem;font-weight:700}
+.slot b{font-family:var(--display);font-size:1.1rem;line-height:1.35;overflow-wrap:anywhere}
+.slot b.empty{color:var(--muted);font-weight:700;font-size:.9rem}
+.slot[data-k="I"] small{color:var(--s1)} .slot[data-k="A"] small{color:var(--s2)} .slot[data-k="T"] small{color:var(--s3)}
+.slot.on{border-style:solid}
+.slot[data-k="I"].on{border-color:var(--s1);background:var(--s1-soft)}
+.slot[data-k="A"].on{border-color:var(--s2);background:var(--s2-soft)}
+.slot[data-k="T"].on{border-color:var(--s3);background:var(--s3-soft)}
+.slot[data-k="R"]{border-style:solid;border-color:var(--ai);background:var(--ai-soft)} .slot[data-k="R"] small{color:var(--ai)}
+.picker[data-k="R"] .chip[aria-pressed="true"]{background:var(--ai);border-color:var(--ai)}
+.ailine{display:block;margin-top:4px;font-size:.84rem;background:var(--ai-soft);border-left:3px solid var(--ai);border-radius:0 8px 8px 0;padding:3px 8px}
+.ailine b{color:var(--ai);font-size:.72rem;margin-right:4px}
+.d4{background:var(--ai)}
+.slot.focus{box-shadow:0 0 0 3px var(--ink)}
+@media (max-width:620px){.slots{grid-template-columns:1fr 1fr}.x{display:none}}
+
+/* 選ぶ場所 */
+.picker{background:var(--paper);border:1.5px solid var(--line);border-radius:18px;padding:14px;margin-top:12px}
+.tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+.tab{border:1.5px solid var(--line);background:transparent;color:var(--ink);border-radius:999px;padding:4px 14px;font-weight:700;font-size:.85rem}
+.tab[aria-selected="true"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.hint{font-size:.82rem;color:var(--muted);margin:0 0 10px}
+.chips{display:flex;flex-wrap:wrap;gap:7px}
+.chip{border:1.5px solid var(--line);background:var(--bg);color:var(--ink);border-radius:999px;padding:5px 12px;font-size:.88rem}
+.chip .n{font-size:.7rem;color:var(--muted);margin-left:4px;font-variant-numeric:tabular-nums}
+.chip[aria-pressed="true"]{color:#fff;font-weight:700}
+.chip[aria-pressed="true"] .n{color:inherit;opacity:.8}
+.picker[data-k="I"] .chip[aria-pressed="true"]{background:var(--s1);border-color:var(--s1)}
+.picker[data-k="A"] .chip[aria-pressed="true"]{background:var(--s2);border-color:var(--s2)}
+.picker[data-k="T"] .chip[aria-pressed="true"]{background:var(--s3);border-color:var(--s3)}
+:root[data-theme="dark"] .chip[aria-pressed="true"]{color:#171613}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .chip[aria-pressed="true"]{color:#171613}}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:12px}
+.cond{display:flex;gap:6px;flex-wrap:wrap;align-items:center;font-size:.85rem;color:var(--muted)}
+.cond .chip[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.dice{margin-left:auto;border:none;background:var(--accent);color:var(--accent-ink);border-radius:999px;padding:8px 16px;font-weight:700}
+
+/* 結果 */
+#result[hidden]{display:none}
+.fused{background:var(--paper);border:2px solid var(--ink);border-radius:20px;padding:16px 18px}
+.fused h3{font-family:var(--display);font-size:1.25rem;margin:0 0 4px;line-height:1.4;text-wrap:balance}
+.fused .one{margin:0 0 12px;color:var(--muted)}
+.rail{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+.rail li{display:grid;grid-template-columns:3.2em 1fr;gap:10px;align-items:start}
+.stage{font-family:var(--display);font-weight:900;text-align:center;border-radius:12px;padding:4px 0;background:var(--hi);font-size:.95rem}
+.rail p{margin:0}
+.from{font-size:.75rem;color:var(--muted)}
+.from a{color:inherit}
+.note{font-size:.78rem;color:var(--muted);margin:10px 0 0}
+.ai{margin-top:14px;display:grid;gap:12px}
+.ai-btn{border:none;background:var(--s2);color:#fff;border-radius:999px;padding:10px 18px;font-weight:700;justify-self:start}
+.ai-btn[disabled]{opacity:.6;cursor:default}
+.ai-status{font-size:.85rem;color:var(--muted);margin:0}
+.idea{background:var(--paper);border:1.5px solid var(--line);border-radius:18px;padding:14px 16px}
+.idea h4{font-family:var(--display);font-size:1.1rem;margin:0 0 2px}
+.idea .today{background:var(--hi);border-radius:10px;padding:6px 10px;font-size:.88rem;margin:8px 0}
+.idea .today b{display:block;font-size:.72rem}
+.idea ol{margin:0;padding-left:1.4em;font-size:.88rem}
+.borrow{font-size:.78rem;color:var(--muted);margin-top:6px}
+.borrow a{color:inherit}
+
+.cands{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px;margin-bottom:12px}
+.cand{text-align:left;border:1.5px solid var(--line);background:var(--paper);color:var(--ink);border-radius:14px;padding:10px 12px;display:flex;flex-direction:column;gap:4px;min-width:0}
+.cand[aria-pressed="true"]{border:2px solid var(--ink);box-shadow:0 2px 0 var(--ink)}
+.cand .no{font-size:.7rem;color:var(--muted);font-weight:700;display:flex;gap:6px;align-items:center}
+.cand b{font-family:var(--display);font-size:.95rem;line-height:1.4}
+.cand span.f{font-size:.78rem;color:var(--muted);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+@media (max-width:620px){.cands{grid-template-columns:none;grid-auto-flow:column;grid-auto-columns:78%;overflow-x:auto;scroll-snap-type:x mandatory;padding-bottom:6px}.cand,.more{scroll-snap-align:start}}
+.more{border:1.5px dashed var(--line);background:transparent;color:var(--muted);border-radius:14px;padding:10px;font-weight:700}
+.near{display:flex;flex-wrap:wrap;gap:7px;margin:4px 0 10px}
+.near button{border:1.5px solid var(--line);background:var(--paper);color:var(--ink);border-radius:999px;padding:4px 12px;font-size:.82rem}
+.near button s{color:var(--muted)}
+.near button .n{font-size:.7rem;color:var(--muted);margin-left:4px}
+.groups{display:grid;gap:18px}
+.aiex{margin-top:14px;border-top:1.5px dashed var(--line);padding-top:10px}
+.aiex h4{font-size:.9rem;margin:0 0 6px;color:var(--ai)}
+.aiex ul{margin:0;padding-left:1.2em;font-size:.85rem;display:grid;gap:6px}
+.aiex a{color:inherit;font-weight:700}
+.case .air{font-size:.8rem;background:var(--ai-soft);border-radius:10px;padding:5px 9px}
+.case .air b{display:block;font-size:.7rem;color:var(--ai)}
+.gtitle{font-weight:700;font-size:.92rem;margin:0 0 8px;display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.dot{display:inline-block;width:.7em;height:.7em;border-radius:50%;vertical-align:baseline}
+.d1{background:var(--s1)}.d2{background:var(--s2)}.d3{background:var(--s3)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;align-items:start}
+.case{background:var(--paper);border:1.5px solid var(--line);border-radius:16px;padding:12px 14px;display:flex;flex-direction:column;gap:5px;min-width:0;scroll-margin-top:16px}
+.case.flash{box-shadow:0 0 0 3px var(--s2)}
+.case .top{display:flex;gap:6px;align-items:center;flex-wrap:wrap;font-size:.72rem;color:var(--muted)}
+.case h5{font-family:var(--display);font-size:1rem;margin:0;line-height:1.4}
+.case .who{font-size:.8rem;color:var(--muted);margin:0}
+.case .fs{background:var(--hi);border-radius:10px;padding:5px 9px;font-size:.82rem}
+.case .fs b{display:block;font-size:.7rem}
+.case details{font-size:.82rem}
+.case summary{cursor:pointer;font-weight:700}
+.case ol{margin:6px 0 0;padding-left:1.3em}
+.case .src{font-size:.72rem;color:var(--muted);overflow-wrap:anywhere}
+.case .src a{color:inherit}
+.empty{color:var(--muted);font-size:.9rem}
+/* ===== 進める（タスク管理） ===== */
+.nav{display:flex;gap:4px;background:var(--paper);border:1.5px solid var(--line);border-radius:999px;padding:4px;width:max-content;margin:0 0 18px}
+.nav button{border:none;background:transparent;color:var(--ink);border-radius:999px;padding:6px 16px;font-weight:700;font-size:.9rem}
+.nav button[aria-selected="true"]{background:var(--accent);color:var(--accent-ink)}
+.nav .badge{font-size:.72rem;margin-left:4px;opacity:.75}
+.go{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+.go button{border:none;border-radius:999px;padding:9px 18px;font-weight:700;background:var(--accent);color:var(--accent-ink)}
+.idea .go button{padding:6px 14px;font-size:.85rem}
+.work{display:grid;grid-template-columns:220px 1fr;gap:18px;align-items:start}
+.side{background:var(--paper);border:1.5px solid var(--line);border-radius:16px;padding:10px;display:grid;gap:2px;position:sticky;top:12px}
+.side h3{font-size:.75rem;color:var(--muted);margin:4px 8px 6px;font-weight:700}
+.side button{display:grid;grid-template-columns:12px 1fr auto;gap:8px;align-items:center;text-align:left;border:none;background:transparent;color:var(--ink);border-radius:10px;padding:7px 8px;font-size:.86rem;min-width:0}
+.side button span:nth-child(2){overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.side button[aria-current="true"]{background:var(--bg);font-weight:700}
+.side .pct{font-size:.72rem;color:var(--muted);font-variant-numeric:tabular-nums}
+.side .new{grid-template-columns:1fr;color:var(--muted);margin-top:6px;border-top:1px solid var(--line);border-radius:0 0 10px 10px;padding-top:10px}
+.sq{width:12px;height:12px;border-radius:4px;background:var(--s2)}
+.main{min-width:0}
+.phead{display:flex;gap:12px;align-items:flex-start;margin-bottom:8px}
+.phead .sq{width:38px;height:38px;border-radius:10px;flex:none;display:grid;place-items:center;color:#fff;font-family:var(--display);font-weight:900}
+.phead h2{margin:0;font-size:1.25rem;line-height:1.35}
+.kw{display:flex;gap:5px;flex-wrap:wrap;margin-top:4px}
+.kw span{font-size:.72rem;border-radius:999px;padding:1px 9px;font-weight:700}
+.kw .k1{background:var(--s1-soft);color:var(--s1)}.kw .k2{background:var(--s2-soft);color:var(--s2)}.kw .k3{background:var(--s3-soft);color:var(--s3)}.kw .k4{background:var(--ai-soft);color:var(--ai)}
+.prog{display:flex;align-items:center;gap:10px;font-size:.8rem;color:var(--muted);margin:10px 0 12px;font-variant-numeric:tabular-nums}
+.bar{flex:1;height:8px;background:var(--line);border-radius:999px;overflow:hidden}
+.bar i{display:block;height:100%;background:var(--s3);border-radius:999px;transition:width .4s}
+.vt{display:flex;gap:16px;border-bottom:1.5px solid var(--line);margin-bottom:12px}
+.vt button{border:none;background:transparent;color:var(--muted);padding:6px 2px;font-weight:700;border-bottom:2.5px solid transparent;margin-bottom:-1.5px}
+.vt button[aria-selected="true"]{color:var(--ink);border-color:var(--ink)}
+.vt .del{margin-left:auto;font-weight:400;font-size:.8rem}
+/* リスト */
+.sec{margin-bottom:14px}
+.sec>button{display:flex;gap:8px;align-items:center;border:none;background:transparent;color:var(--ink);font-weight:700;padding:4px 0;font-size:.95rem}
+.sec>button .st{font-family:var(--display);font-weight:900;background:var(--hi);border-radius:8px;padding:0 8px}
+.sec>button small{color:var(--muted);font-weight:400}
+.sec>button .chev{transition:transform .2s;color:var(--muted)}
+.sec.closed>button .chev{transform:rotate(-90deg)}
+.sec.closed .rows{display:none}
+.rows{border-top:1px solid var(--line)}
+.task{display:grid;grid-template-columns:28px 1fr auto;gap:8px;align-items:center;border-bottom:1px solid var(--line);padding:7px 4px;cursor:pointer;background:transparent}
+.task:hover,.task.sel{background:var(--paper)}
+.task .nm{min-width:0;font-size:.9rem;line-height:1.45}
+.task.done .nm{color:var(--muted);text-decoration:line-through}
+.meta{display:flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:flex-end}
+.chk{width:22px;height:22px;border-radius:50%;border:1.8px solid var(--muted);background:transparent;display:grid;place-items:center;padding:0;color:transparent}
+.chk svg{width:12px;height:12px}
+.chk:hover{border-color:var(--s3);color:var(--s3)}
+.done .chk,.chk.on{background:var(--s3);border-color:var(--s3);color:#fff}
+.pop{animation:pop .35s ease}
+@keyframes pop{50%{transform:scale(1.3)}}
+.due{font-size:.72rem;color:var(--muted);white-space:nowrap}
+.due.late{color:#c43d3d}.due.today{color:var(--s3);font-weight:700}
+.aib{font-size:.68rem;font-weight:700;color:var(--ai);background:var(--ai-soft);border-radius:999px;padding:0 7px}
+.add{display:block;border:none;background:transparent;color:var(--muted);font-size:.85rem;padding:7px 4px 7px 40px;text-align:left;width:100%}
+.add input{font:inherit;width:100%;border:1.5px solid var(--line);border-radius:8px;padding:4px 8px;background:var(--paper);color:var(--ink)}
+/* ボード */
+.board{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(230px,1fr);gap:10px;overflow-x:auto;padding-bottom:8px}
+.col{background:var(--paper);border:1.5px solid var(--line);border-radius:14px;padding:8px;display:flex;flex-direction:column;gap:7px;min-height:120px}
+.col h4{margin:2px 4px 2px;font-size:.88rem;display:flex;gap:6px;align-items:center}
+.col h4 small{color:var(--muted);font-weight:400}
+.col.over{outline:2px dashed var(--s2)}
+.card{background:var(--bg);border:1.5px solid var(--line);border-radius:10px;padding:8px;display:grid;grid-template-columns:24px 1fr;gap:6px;cursor:pointer;font-size:.84rem}
+.card.done .nm{color:var(--muted);text-decoration:line-through}
+.card .meta{grid-column:2;justify-content:flex-start}
+.card[draggable="true"]{cursor:grab}
+/* 詳細 */
+.pane{position:fixed;top:0;right:0;bottom:0;width:min(420px,100%);background:var(--paper);border-left:1.5px solid var(--line);box-shadow:-8px 0 30px rgba(0,0,0,.12);padding:16px;overflow-y:auto;transform:translateX(105%);transition:transform .25s;z-index:20}
+.pane.open{transform:none}
+.pane .bar2{display:flex;gap:8px;align-items:center;margin-bottom:12px}
+.pane .bar2 .done-btn{border:1.5px solid var(--line);background:transparent;color:var(--ink);border-radius:8px;padding:5px 12px;font-weight:700;font-size:.85rem}
+.pane .bar2 .done-btn.on{background:var(--s3-soft);border-color:var(--s3);color:var(--s3)}
+.pane .x2{margin-left:auto;border:none;background:transparent;color:var(--muted);font-size:1.4rem;line-height:1}
+.pane textarea,.pane input,.pane select{font:inherit;width:100%;background:var(--bg);color:var(--ink);border:1.5px solid var(--line);border-radius:8px;padding:6px 8px}
+.pane .title{font-family:var(--display);font-size:1.1rem;font-weight:700;resize:none;border-color:transparent;background:transparent}
+.pane dl{display:grid;grid-template-columns:5em 1fr;gap:8px 10px;align-items:center;font-size:.85rem;margin:8px 0 14px}
+.pane dt{color:var(--muted)}
+.pane .box{border-radius:10px;padding:8px 10px;font-size:.84rem;margin-bottom:10px}
+.pane .box b{display:block;font-size:.72rem;margin-bottom:2px}
+.pane .box.c{background:var(--bg)}.pane .box.a{background:var(--ai-soft)}.pane .box.a b{color:var(--ai)}
+.pane .box a{color:inherit}
+.av{width:22px;height:22px;border-radius:50%;display:inline-grid;place-items:center;font-size:.62rem;font-weight:900;flex:none}
+.av.me{background:var(--s2-soft);color:var(--s2);border:1.5px solid var(--s2)}
+.av.bot{background:var(--ai);color:#fff}
+.ran{font-size:.68rem;color:var(--ai);font-weight:700}
+.runbox{border:1.5px solid var(--ai);border-radius:12px;padding:10px;margin-bottom:12px}
+.runbox button{border:none;background:var(--ai);color:#fff;border-radius:999px;padding:7px 14px;font-weight:700;font-size:.85rem}
+.runbox button[disabled]{opacity:.6}
+.runbox .out{white-space:pre-wrap;font-size:.86rem;margin-top:8px;background:var(--ai-soft);border-radius:8px;padding:8px;max-height:40vh;overflow:auto}
+.runbox small{display:block;color:var(--muted);font-size:.75rem;margin-top:6px}
+
+/* ===== めくる（mikanのように左右に振るだけ） ===== */
+.sw{max-width:440px;margin:0 auto;display:flex;flex-direction:column;gap:12px}
+.swtop{display:flex;align-items:center;gap:14px;font-size:.85rem;color:var(--muted);font-variant-numeric:tabular-nums}
+.swtop b{color:var(--ink);font-family:var(--display);font-size:1.1rem}
+.stack{position:relative;height:min(62vh,520px);min-height:430px}
+.sc{position:absolute;inset:0;background:var(--paper);border:2px solid var(--line);border-radius:26px;padding:20px 20px 16px;display:flex;flex-direction:column;gap:10px;touch-action:pan-y;user-select:none;-webkit-user-select:none;box-shadow:0 10px 30px rgba(0,0,0,.08);overflow:hidden;cursor:grab}
+.sc.back{transform:scale(.95) translateY(12px);opacity:.7;pointer-events:none}
+.sc.fly{transition:transform .3s ease,opacity .3s}
+.sc .stamp{position:absolute;top:18px;font-family:var(--display);font-weight:900;font-size:1.2rem;border:3px solid;border-radius:12px;padding:0 10px;opacity:0;transform:rotate(-10deg);background:var(--paper)}
+.sc .stamp.yes{right:16px;color:var(--s3)} .sc .stamp.no{left:16px;color:var(--muted);transform:rotate(10deg)}
+.sc .kw{margin:0}
+.sc h3{font-family:var(--display);font-weight:900;font-size:clamp(1.35rem,6vw,1.7rem);line-height:1.35;margin:4px 0 0;text-wrap:balance}
+.sc .why{font-size:.85rem;color:var(--muted);margin:0}
+.sc .one1{background:var(--hi);border-radius:14px;padding:10px 12px;font-size:.92rem}
+.sc .one1 b{display:block;font-size:.72rem}
+.sc .ai1{background:var(--ai-soft);border-radius:14px;padding:10px 12px;font-size:.88rem}
+.sc .ai1 b{display:block;font-size:.72rem;color:var(--ai)}
+.mul{flex:1;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:4px;text-align:center}
+.mul span{font-family:var(--display);font-weight:900;font-size:clamp(1.5rem,7.5vw,2rem);line-height:1.25;border-radius:16px;padding:6px 16px;max-width:100%}
+.mul .m1{background:var(--s1-soft);color:var(--s1)}.mul .m2{background:var(--s2-soft);color:var(--s2)}.mul .m3{background:var(--s3-soft);color:var(--s3)}.mul .m4{background:var(--ai-soft);color:var(--ai)}
+.mul .m4 small{display:block;font-size:.7rem;font-family:var(--body)}
+.mul i{font-style:normal;color:var(--muted);font-weight:900;font-size:1.1rem;line-height:1}
+.more1[hidden],.mul[hidden]{display:none!important}
+.more1{overflow-y:auto;display:flex;flex-direction:column;gap:8px;flex:1}
+.more1 h3{font-size:1.25rem!important}
+.sc .tap{margin-top:auto;text-align:center;font-size:.75rem;color:var(--muted)}
+.sc .rail{overflow-y:auto;font-size:.86rem}
+.sc .rail li{grid-template-columns:2.8em 1fr}
+.sc.q{background:var(--s2-soft);border-color:var(--s2);cursor:default}
+.sc.q h3{font-size:1.3rem}
+.qopts{display:grid;gap:8px;margin-top:6px}
+.qopts button{border:2px solid var(--line);background:var(--paper);color:var(--ink);border-radius:14px;padding:12px;font-weight:700;font-size:1rem;text-align:left}
+.qopts .skip{background:transparent;border-style:dashed;color:var(--muted);font-weight:400;font-size:.85rem;text-align:center}
+.btns{display:flex;justify-content:center;gap:28px}
+.btns button{width:76px;height:76px;border-radius:50%;border:2px solid var(--line);background:var(--paper);font-size:1.5rem;font-weight:900;display:grid;place-items:center;line-height:1;color:var(--ink)}
+.btns button small{display:block;font-size:.62rem;font-weight:700;margin-top:3px}
+.btns .n{color:var(--muted)}.btns .y{color:var(--s3);border-color:var(--s3)}
+.hint2{text-align:center;font-size:.75rem;color:var(--muted);margin:0}
+/* ストック */
+.stk{max-width:720px;margin:0 auto}
+.stk .vt{margin-bottom:10px}
+.stk .it{background:var(--paper);border:1.5px solid var(--line);border-radius:16px;padding:12px 14px;margin-bottom:10px;display:grid;gap:6px}
+.stk .it h4{margin:0;font-family:var(--display);font-size:1.02rem;line-height:1.4}
+.stk .it .fs1{font-size:.84rem;color:var(--muted);margin:0}
+.stk .it .row1{display:flex;gap:6px;flex-wrap:wrap}
+.stk .it .row1 button{border:1.5px solid var(--line);background:transparent;color:var(--ink);border-radius:999px;padding:5px 14px;font-size:.82rem;font-weight:700}
+.stk .it .row1 button.go1{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.stk .lead2{color:var(--muted);font-size:.88rem;margin:0 0 12px}
+.toast{position:fixed;left:50%;bottom:24px;transform:translate(-50%,150%);background:var(--accent);color:var(--accent-ink);padding:10px 18px;border-radius:999px;font-weight:700;transition:transform .3s;z-index:30;max-width:calc(100% - 32px);text-align:center;font-size:.88rem}
+.toast.show{transform:translate(-50%,0)}
+.emptyw{background:var(--paper);border:1.5px dashed var(--line);border-radius:16px;padding:28px;text-align:center;color:var(--muted)}
+@media (max-width:820px){.work{grid-template-columns:1fr}.side{position:static;grid-auto-flow:column;grid-auto-columns:max-content;overflow-x:auto}.side h3{display:none}.side .new{border-top:none;padding-top:7px;margin-top:0}
+ .pane{top:auto;height:85vh;width:100%;border-left:none;border-top:1.5px solid var(--line);border-radius:18px 18px 0 0;transform:translateY(105%)}}
+</style>
+
+<div class="page">
+  <div class="nav" role="tablist"><button role="tab" data-v="swipe" aria-selected="true">めくる</button><button role="tab" data-v="stock" aria-selected="false">ストック<span class="badge" id="stkn"></span></button><button role="tab" data-v="find" aria-selected="false">深掘り</button><button role="tab" data-v="work" aria-selected="false">進める<span class="badge" id="pcount"></span></button></div>
+  <div id="v-swipe"><div class="sw">
+    <div class="swtop"><span>今日 <b id="sw-today">0</b> 枚</span><span>ストック <b id="sw-yes">0</b></span></div>
+    <div class="stack" id="stack"></div>
+    <div class="btns"><button class="n" id="sw-no" aria-label="アーカイブ">←<small>アーカイブ</small></button><button class="y" id="sw-yes-btn" aria-label="ピンときた">→<small>ピンときた</small></button></div>
+    <p class="hint2">ピンときたら右（ストックへ）、合わなければ左（アーカイブへ）。</p>
+  </div></div>
+  <div id="v-stock" hidden><div class="stk" id="stk"></div></div>
+  <div id="v-find" hidden>
+  <h1>3つ選んで、AIで変える</h1>
+  <p class="lead">AIで仕事の形が変わること（AX）を前提にした入口です。業界、自分の持ち物、相手をひとつずつ選んでください。4つ目は必ずAIです。実在の成功事例から近いものを集めてその道のりをつなぎ、どの段階でAIに何をさせるかまで入れたレールを作ります。迷ったら「おまかせ」で3つ引けます。</p>
+
+  <div class="slots" role="group" aria-label="選んだキーワード">
+    <button class="slot" data-k="I"><small>① 業界</small><b class="empty">選ぶ</b></button>
+    <span class="x" aria-hidden="true">×</span>
+    <button class="slot" data-k="A"><small>② 自分の持ち物</small><b class="empty">選ぶ</b></button>
+    <span class="x" aria-hidden="true">×</span>
+    <button class="slot" data-k="T"><small>③ 相手</small><b class="empty">選ぶ</b></button>
+    <span class="x" aria-hidden="true">×</span>
+    <button class="slot" data-k="R"><small>④ AI（必ず入る）</small><b>おまかせ</b></button>
+  </div>
+
+  <div class="picker" id="picker" data-k="I">
+    <div class="tabs" role="tablist">
+      <button class="tab" role="tab" data-k="I">① 業界</button>
+      <button class="tab" role="tab" data-k="A">② 自分の持ち物</button>
+      <button class="tab" role="tab" data-k="T">③ 相手</button>
+      <button class="tab" role="tab" data-k="R">④ AIに何をさせるか</button>
+    </div>
+    <p class="hint" id="hint"></p>
+    <div class="chips" id="chips"></div>
+    <div class="row">
+      <div class="cond" id="cond"><span>条件（任意）</span></div>
+      <button class="dice" id="dice">おまかせで3つ引く</button>
+    </div>
+  </div>
+
+  <section id="result" hidden>
+    <h2 id="r-title"></h2>
+    <p class="sub" id="c-sub"></p>
+    <div class="cands" id="cands"></div>
+    <div class="fused" id="fused"></div>
+    <div class="ai" id="ai" hidden>
+      <button class="ai-btn" id="ai-btn">Claudeに、AIと掛け合わせた案を3つ考えてもらう</button>
+      <p class="ai-status" id="ai-status" aria-live="polite"></p>
+      <div id="ideas" class="grid"></div>
+    </div>
+    <h2>となりの組み合わせ</h2>
+    <p class="sub">1つだけ入れ替えると、こんな組み合わせにも事例があります。押すと入れ替わります。</p>
+    <div class="near" id="near"></div>
+    <h2>元になった実在の事例</h2>
+    <p class="sub">色の点は、その事例がどのキーワードに近いかを示します。紫の点はAIを使った事例（57件を追加で集めたもの）です。3色そろうものから順に並べています。</p>
+    <div class="groups" id="groups"></div>
+  </section>
+  </div>
+  <div id="v-work" hidden><div class="work"><nav class="side" id="side" aria-label="プロジェクト"></nav><div class="main" id="pmain"></div></div></div>
+</div>
+<aside class="pane" id="pane" aria-label="タスクの詳細"></aside>
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+const D=/*DATA*/{};
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const ROLES=["おまかせ","作る","答える","まとめる","訳す・届ける","自動化する"];
+const LISTS={I:D.ind,A:D.asset,T:D.target,R:ROLES};
+const HINT={I:"どの業界で考えますか。知らない業界でもかまいません。",A:"あなたが持っているもの。好き、得意、経験、使っていない物や場所。",T:"だれのためにやりますか。困っていそうな人や場面を選びます。",R:"AIは必ず掛け合わせます。何をさせるか決めていなければ「おまかせ」のままで大丈夫です。"};
+const DOT={I:"d1",A:"d2",T:"d3",AI:"d4"};
+// AIの役割ごとに、5段階それぞれでAIにさせること
+const AI_HELP={
+ "作る":["AIに{A}を生かした案を20個出させ、{T}に響きそうなものを3つ選ぶ","試作品の説明文・画像・チラシをAIで作り、1つだけ形にする","AIで投稿文や商品ページを毎回作り、出す回数を増やす","反応の良かった言葉をAIに分析させ、次の作品や文章に生かす","作る作業の大半をAIに任せ、自分は{A}の部分だけに集中する"],
+ "答える":["{T}がよく困ることをAIに洗い出させ、自分が答えられるものに丸をつける","{A}で知っていることをまとめ、AIが代わりに答える相談窓口の試作版を作る","まず知人の{T}に使ってもらい、AIの答えを自分が確かめて直す","よく来る質問と答えを貯め、AIの答えの質を上げる","24時間AIが一次対応し、自分は難しい相談だけを受ける"],
+ "まとめる":["{I}の情報や口コミをAIにまとめさせ、{T}の不満を見つける","{A}の経験をAIで手順書やチェックリストにまとめる","まとめたものを{T}に無料で配り、反応を見る","利用者の声をAIで集計し、絞り込むべき相手を決める","まとめる作業を型にして、毎月の有料レポートや講座にする"],
+ "訳す・届ける":["{A}で作れるものを、AI翻訳で海外や別の世代に届けられないか調べる","商品説明や案内をAIで多言語・やさしい言葉に直す","海外向けの場（Etsyや多言語SNS）に出して最初の反応をもらう","問い合わせの翻訳や返信をAIに手伝わせ、対応できる相手を広げる","言葉の壁がない形で、届け先の国や地域を増やす"],
+ "自動化する":["{I}の仕事で毎日くり返している作業をAIと一緒に洗い出す","1つの作業だけをAIやノーコードで自動化してみる","自動化したものを{T}に使ってもらい、時間がどれだけ減ったかを聞く","よく使われる部分を磨き、他の人にも使える形にする","自動化の仕組みを商品にして、使った分だけ料金をもらう"],
+};
+const ROLE_BY_ASSET={"文章を書く":"作る","絵・イラスト":"作る","写真・動画":"作る","音楽":"作る","話す・教える":"答える","介護・医療の経験":"答える","子育ての経験":"答える","語学":"訳す・届ける","地元の知識":"訳す・届ける","パソコン・プログラミング":"自動化する","片付け・家事":"まとめる","接客・営業":"答える","コレクション・趣味":"まとめる"};
+function aiCases(r=role()){
+  return D.cases.filter(c=>c.ai).map(c=>({c,s:(c.tags.includes("R:"+r)?2:0)+(sel.I&&c.tags.includes("I:"+sel.I)?3:0)+(sel.A&&c.tags.includes("A:"+sel.A)?1:0)+(sel.T&&c.tags.includes("T:"+sel.T)?1:0)}))
+    .filter(x=>x.s>=2).sort((a,b)=>b.s-a.s).slice(0,3).map(x=>x.c)}
+function role(){return sel.R&&sel.R!=="おまかせ"?sel.R:(ROLE_BY_ASSET[sel.A]||"作る")}
+function aiText(i,r=role()){return AI_HELP[r][i].replace(/\{A\}/g,sel.A||"自分の得意").replace(/\{T\}/g,sel.T||"相手").replace(/\{I\}/g,sel.I||"その業界")}
+const BY=Object.fromEntries(D.cases.map(c=>[c.id,c]));
+const count=tag=>D.cases.filter(c=>c.tags.includes(tag)).length;
+const sel={I:null,A:null,T:null,R:"おまかせ"}; const cond=new Set(); let cur="I";
+
+function drawSlots(){
+  document.querySelectorAll(".slot").forEach(b=>{const k=b.dataset.k,v=sel[k];
+    b.classList.toggle("on",!!v);b.classList.toggle("focus",k===cur);
+    b.querySelector("b").className=v?"":"empty";b.querySelector("b").textContent=k==="R"&&v==="おまかせ"&&sel.A?"おまかせ（"+role()+"）":(v||"選ぶ")});
+}
+function drawPicker(){
+  $("picker").dataset.k=cur;$("hint").textContent=HINT[cur];
+  document.querySelectorAll(".tab").forEach(t=>t.setAttribute("aria-selected",t.dataset.k===cur));
+  $("chips").innerHTML=LISTS[cur].map(v=>`<button class="chip" data-v="${esc(v)}" aria-pressed="${sel[cur]===v}">${esc(v)}${cur==="R"?"":`<span class="n">${count(cur+":"+v)}</span>`}</button>`).join("");
+}
+$("cond").insertAdjacentHTML("beforeend",D.cond.map(v=>`<button class="chip" data-c="${esc(v)}" aria-pressed="false">${esc(v)}</button>`).join(""));
+$("cond").addEventListener("click",e=>{const b=e.target.closest("[data-c]");if(!b)return;const v=b.dataset.c;
+  cond.has(v)?cond.delete(v):cond.add(v);b.setAttribute("aria-pressed",cond.has(v));update()});
+document.querySelectorAll(".slot,.tab").forEach(b=>b.addEventListener("click",()=>{cur=b.dataset.k;drawSlots();drawPicker()}));
+$("chips").addEventListener("click",e=>{const b=e.target.closest(".chip");if(!b)return;
+  sel[cur]=cur==="R"?b.dataset.v:(sel[cur]===b.dataset.v?null:b.dataset.v);
+  if(sel[cur]&&cur!=="R"){const next=["I","A","T"].find(k=>!sel[k]);if(next)cur=next}
+  drawSlots();drawPicker();update()});
+$("dice").addEventListener("click",()=>{
+  // 3つとも事例がある組み合わせを優先して引く
+  for(let i=0;i<60;i++){const p={};for(const k of["I","A","T"])p[k]=LISTS[k][Math.floor(Math.random()*LISTS[k].length)];
+    const hits=D.cases.filter(c=>["I","A","T"].filter(k=>c.tags.includes(k+":"+p[k])).length>=2).length;
+    if(hits>=3||i===59){Object.assign(sel,p);break}}
+  cur="I";drawSlots();drawPicker();update();$("result").scrollIntoView({behavior:"smooth",block:"start"})});
+
+function scored(){
+  const keys=["I","A","T"].filter(k=>sel[k]);
+  return D.cases.map(c=>{const hit=keys.filter(k=>c.tags.includes(k+":"+sel[k]));
+      const ch=[...cond].filter(v=>c.tags.includes("C:"+v)).length;
+      return{c,hit,ai:c.tags.includes("AI"),score:hit.length*10+ch+(c.y?1:0)+(c.tags.includes("AI")?3:0)}})
+    .filter(x=>x.hit.length).sort((a,b)=>b.score-a.score);
+}
+// 5段階：種・芽・つぼみ・花・実。各段階を、別々の事例の「その段階にあたる一手」から借りてくる
+const STAGES=["種","芽","つぼみ","花","実"];
+const STAGE_RX=[/最初|始め|作っ|試作|調べ|自分用|趣味|気づ|きっかけ/,/試|出品|小さく|身近|知人|友人|無料|モニター|テスト/,/最初の|初|売れ|反響|注文|依頼|客|マルシェ|SNS|投稿|発信/,/改良|絞|リピ|口コミ|継続|増や|広げ|協力|提携/,/法人|独立|店舗|拡大|仕組み|事業|雇|全国|海外/];
+function fuse(list,off=0){
+  const pool=list.filter(x=>(x.c.r||[]).length>=3).slice(0,30),used=new Set(),steps=[];
+
+  STAGES.forEach((st,i)=>{
+    // 種は持ち物、つぼみは相手、花は業界に近い事例を優先する
+    const want={0:"A",2:"T",3:"I"}[i];
+    const order=[...pool].map((x,n)=>({x,n})).sort((a,b)=>(want?(b.x.hit.includes(want)-a.x.hit.includes(want)):0)||a.n-b.n).map(o=>o.x);
+    let pick=null;
+    // off 番目の候補から選ぶと、候補ごとに違う事例の組み立てになる
+    const free=order.filter(x=>!used.has(x.c.id));const rot=free.length?[...free.slice(off%free.length),...free.slice(0,off%free.length)]:[];
+    for(const x of rot){const r=x.c.r,pos=Math.round(i/4*(r.length-1));
+      const cand=[r[pos],r[Math.max(0,pos-1)],r[Math.min(r.length-1,pos+1)]];
+      const s=i===0&&x.c.fs?x.c.fs:(cand.find(t=>STAGE_RX[i].test(t))||r[pos]);
+      pick={st,s,c:x.c};break}
+    if(!pick&&pool.length){const x=pool[i%pool.length];const r=x.c.r;pick={st,s:r[Math.round(i/4*(r.length-1))],c:x.c}}
+    if(pick){used.add(pick.c.id);steps.push(pick)}
+  });
+  return steps;
+}
+function caseCard(x){const c=x.c;
+  return `<article class="case" id="c-${c.id}"><div class="top">${["I","A","T"].map(k=>x.hit.includes(k)?`<span class="dot ${DOT[k]}" title="${esc(sel[k])}"></span>`:"").join("")}${x.ai?`<span class="dot d4" title="AIを使った事例"></span>`:""}<span>${esc(c.f)}・${esc(c.g)}</span></div>
+  <h5>${esc(c.t)}</h5><p class="who">${esc(c.w)}</p>
+  ${c.ai?`<div class="air"><b>AIにさせたこと${c.at?"（"+esc(c.at)+"）":""}</b>${esc(c.ai)}</div>`:""}
+  ${c.fs?`<div class="fs"><b>最初の一歩</b>${esc(c.fs)}</div>`:""}
+  <details><summary>道のりと、うまくいった理由</summary><ol>${(c.r||[]).map(s=>`<li>${esc(s)}</li>`).join("")}</ol>${c.y?`<p><b>理由：</b>${esc(c.y)}</p>`:""}${c.res?`<p><b>成果：</b>${esc(c.res)}</p>`:""}</details>
+  <p class="src">出典：<a href="${esc(c.u)}" target="_blank" rel="noopener">${esc(c.st||c.u)}</a></p></article>`}
+function jump(id){const el=$("c-"+id);if(!el)return;el.scrollIntoView({behavior:"smooth",block:"center"});el.classList.add("flash");setTimeout(()=>el.classList.remove("flash"),1600)}
+document.addEventListener("click",e=>{const a=e.target.closest("a[data-case]");if(a){e.preventDefault();jump(a.dataset.case)}});
+
+let lastList=[],lastSteps=[],lastHead="",lastIdeas=[],lastRole="作る",cands=[],candSel=0,candShow=6;
+function update(){
+  const keys=["I","A","T"].filter(k=>sel[k]);
+  $("result").hidden=keys.length<2;if(keys.length<2)return;
+  const list=scored();lastList=list;
+  $("r-title").textContent=keys.map(k=>sel[k]).join(" × ")+" × AI"+(cond.size?`（${[...cond].join("・")}）`:"");
+  cands=makeCands(list,keys);candSel=0;candShow=6;drawCands();drawFused();drawNear();
+  const exIds=new Set(aiCases().map(c=>c.id));
+  const groups=[{t:"3つ全部に近い",f:x=>x.hit.length===3}];
+  if(keys.length===3)[["A","T"],["I","A"],["I","T"]].forEach(p=>groups.push({t:p.map(k=>sel[k]).join(" × "),dots:p,f:x=>x.hit.length===2&&p.every(k=>x.hit.includes(k))}));
+  else groups[0]={t:keys.map(k=>sel[k]).join(" × "),dots:keys,f:x=>x.hit.length===keys.length};
+  groups.push({t:"AIで形にした事例",dots:["AI"],f:x=>x.ai,max:6});
+  groups.push({t:"どれか1つに近い（参考）",f:x=>x.hit.length===1,max:6});
+  const seen=new Set();
+  // AIの実例として挙げた事例が、キーワードに当たらなくても一覧に出るようにする
+  exIds.forEach(id=>{if(!list.some(x=>x.c.id===id))list.push({c:BY[id],hit:[],ai:true,score:0})});
+  $("groups").innerHTML=groups.map(g=>{const xs=list.filter(x=>!seen.has(x.c.id)&&g.f(x)).slice(0,g.max||9);xs.forEach(x=>seen.add(x.c.id));
+    if(!xs.length)return"";
+    const dots=(g.dots||(g.t.startsWith("3つ")?["I","A","T"]:[])).map(k=>`<span class="dot ${DOT[k]}"></span>`).join("");
+    return `<div><p class="gtitle">${dots}${esc(g.t)}<span class="from">${xs.length}件</span></p><div class="grid">${xs.map(caseCard).join("")}</div></div>`}).join("")||`<p class="empty">近い事例がありません。</p>`;
+  $("ideas").innerHTML="";$("ai-status").textContent="";lastIdeas=[];$("ai-btn").textContent="Claudeに、AIと掛け合わせた案を3つ考えてもらう";
+  $("ai").hidden=!sample||keys.length<3;
+}
+
+
+// 1つの組み合わせから、AIの役割と手本の事例を変えてレール候補をたくさん作る
+function makeCands(list,keys){
+  const fixed=sel.R&&sel.R!=="おまかせ";
+  const roles=[role(),...ROLES.slice(1).filter(r=>r!==role())],out=[],seen=new Set();
+  for(let n=0;n<40&&out.length<18;n++){
+    // 役割を選んでいればその役割だけ、おまかせなら役割も順に変える
+    const r=fixed?sel.R:roles[n%roles.length],steps=fuse(list,n);if(!steps.length)break;
+    const sig=steps.map(x=>x.c.id).join(",");if(seen.has(sig))continue;seen.add(sig);
+    out.push({r,steps,seed:steps[0].c})}
+  return out}
+function candHead(c){return sel.T&&sel.A?`${sel.I?sel.I+"のAX：":""}${sel.T}に向けて、${sel.A}をAI（${c.r}）で生かす`:`${["I","A","T"].filter(k=>sel[k]).map(k=>sel[k]).join("と")}とAI（${c.r}）を掛け合わせる`}
+function drawCands(){
+  $("c-sub").textContent=cands.length?`レールの候補が${cands.length}本あります。AIの役割と、手本にする事例の組み合わせを変えています。`:"";
+  $("cands").innerHTML=cands.slice(0,candShow).map((c,n)=>`<button class="cand" data-cand="${n}" aria-pressed="${n===candSel}"><span class="no">候補${n+1}<span class="aib">AI：${esc(c.r)}</span></span><b>${esc(c.seed.t.slice(0,34))}${c.seed.t.length>34?"…":""} 型</b><span class="f">最初の一歩：${esc(c.steps[0].s)}</span></button>`).join("")
+    +(cands.length>candShow?`<button class="more" data-morec>もっと見る（あと${cands.length-candShow}本）</button>`:"")}
+function drawFused(){const list=lastList,c=cands[candSel];
+  if(!c){$("fused").innerHTML=`<p class="empty">この組み合わせに近い事例が見つかりませんでした。どれか1つを変えてみてください。</p>`;lastSteps=[];return}
+  lastSteps=c.steps;lastRole=c.r;const head=lastHead=candHead(c);
+  $("fused").innerHTML=`<p class="from" style="margin:0 0 2px">候補${candSel+1}</p><h3>${esc(head)}</h3><p class="one">近い事例${list.length}件から段階ごとに一手ずつ借りてつなぎ、各段階にAIの出番を足したレールです。</p>
+    <ol class="rail">${c.steps.map((p,i)=>`<li><span class="stage">${p.st}</span><div><p>${esc(p.s)}</p><span class="from">借りた事例：<a href="#c-${p.c.id}" data-case="${p.c.id}">${esc(p.c.t)}</a></span><span class="ailine"><b>× AI</b>${esc(aiText(i,c.r))}</span></div></li>`).join("")}</ol>
+    ${(()=>{const ex=aiCases(c.r);return ex.length?`<div class="aiex"><h4>AIの使い方の実例（${esc(c.r)}${sel.I?"・"+esc(sel.I):""}に近いもの）</h4><ul>${ex.map(x=>`<li><a href="#c-${x.id}" data-case="${x.id}">${esc(x.t)}</a><br>${esc(x.ai)}</li>`).join("")}</ul></div>`:""})()}
+    <p class="note">事例の手順はそのまま、AIの出番は役割ごとの型から入れています。下のボタンでClaudeに頼むと、4つを掛け合わせた新しい案になります。</p>
+    <div class="go"><button data-start="rail">このレールで始める</button></div>`}
+// 1つだけ入れ替えた組み合わせのうち、事例が多いものを出す
+function drawNear(){const keys=["I","A","T"].filter(k=>sel[k]);if(keys.length<3){$("near").innerHTML="";return}
+  const out=[];
+  for(const k of keys){const others=keys.filter(x=>x!==k);
+    LISTS[k].filter(v=>v!==sel[k]).map(v=>({k,v,n:D.cases.filter(c=>c.tags.includes(k+":"+v)&&others.filter(o=>c.tags.includes(o+":"+sel[o])).length>=1&&others.some(o=>c.tags.includes(o+":"+sel[o]))).length}))
+      .sort((a,b)=>b.n-a.n).slice(0,3).forEach(x=>x.n&&out.push(x))}
+  $("near").innerHTML=out.map(x=>`<button data-near="${x.k}" data-v="${esc(x.v)}"><s>${esc(sel[x.k])}</s> → ${esc(x.v)}<span class="n">${x.n}件</span></button>`).join("")}
+document.addEventListener("click",e=>{
+  const c=e.target.closest("[data-cand]");if(c){candSel=+c.dataset.cand;drawCands();drawFused();$("fused").scrollIntoView({behavior:"smooth",block:"start"});return}
+  if(e.target.closest("[data-morec]")){candShow=Math.min(cands.length,candShow+6);drawCands();return}
+  const nb=e.target.closest("[data-near]");if(nb){sel[nb.dataset.near]=nb.dataset.v;drawSlots();drawPicker();update();$("result").scrollIntoView({behavior:"smooth",block:"start"})}});
+// Claude に融合案を頼む（見ている人の Claude を使う。使えない画面ではボタンを出さない）
+let sample=null,ctl=null;
+(async()=>{try{sample=await window.claude?.use("sample")}catch{sample=null}update()})();
+$("ai-btn").addEventListener("click",async()=>{
+  if(!sample)return;
+  const aiTop=aiCases().map(c=>({id:c.id,題:c.t,AIにさせたこと:c.ai,道のり:c.r}));
+  const top=lastList.filter(x=>!x.ai).slice(0,8).map(x=>({id:x.c.id,題:x.c.t,人:x.c.w,出発点:x.c.s,したこと:x.c.x,最初の一歩:x.c.fs,道のり:x.c.r,理由:x.c.y}));
+  let prompt=`あなたは「アイデアを形にする」手伝いをします。AIで仕事の形が変わること（AX）を前提に、利用者が選んだ3つのキーワードを掛け合わせて、普通の人が来週から始められる新しい案を3つ作ってください。既存のやり方にAIを足すのではなく、AIがあるから成り立つ形にしてください。どの案でも、AIが仕事のどこを担い、本人が何をするかをはっきりさせてください。
+キーワード：業界=${sel.I}／自分の持ち物=${sel.A}／相手=${sel.T}／AIの役割=${sel.R==="おまかせ"?"おまかせ（案ごとに最適なものを選ぶ）":sel.R}${cond.size?"／条件="+[...cond].join("・"):""}
+下の実在の成功事例から、使える一手を借りて組み合わせてください。事例にない数字や成果を作らないでください。3つの案は互いに違う方向にしてください。やさしい日本語で、専門用語は使いません。
+事例：${JSON.stringify(top)}
+AIを使った実例（AIの使い方はここから借りてください）：${JSON.stringify(aiTop)}
+JSONの配列だけを返してください。形：[{"name":"案の名前（15字以内）","catch":"一言の説明（40字以内）","today":"今日か今週できる最初の一歩（具体的に）","ax":"AIでこの業界の何が変わるか（40字以内）","ai":"AIにさせること（40字以内）","rail":["種：…（AIの使い方を含める）","芽：…","つぼみ：…","花：…","実：…"],"borrowed":[{"id":"C001","what":"その事例から借りたこと（20字以内）"}]}]`;
+  const before=lastIdeas.map(i=>i.name).filter(Boolean);
+  if(before.length)prompt+=`\nすでに出た案（これらとは違う方向にしてください）：${before.join("、")}`;
+  $("ai-btn").disabled=true;$("ai-status").textContent="考えています…";
+  ctl=new AbortController();
+  try{
+    const ideas=await sample.json(prompt,{signal:ctl.signal,cache:false});
+    if(!Array.isArray(ideas))throw{code:"invalid_json"};
+    $("ai-status").textContent="Claudeが作った案です。借りた事例を押すと、その事例に移ります。";
+    lastIdeas=lastIdeas.concat(ideas.slice(0,3));
+    $("ai-btn").textContent=`もっと出す（いま${lastIdeas.length}案）`;
+    $("ideas").innerHTML=lastIdeas.map((i,n)=>`<article class="idea"><h4>${esc(i.name)}</h4><p class="one">${esc(i.catch)}</p>
+      ${i.ax?`<p class="one" style="margin:0 0 6px"><b>AX：</b>${esc(i.ax)}</p>`:""}<span class="ailine"><b>× AI</b>${esc(i.ai)}</span><div class="today"><b>最初の一歩</b>${esc(i.today)}</div><ol>${(i.rail||[]).map(s=>`<li>${esc(s)}</li>`).join("")}</ol>
+      <p class="borrow">借りた事例：${(i.borrowed||[]).filter(b=>BY[b.id]).map(b=>`<a href="#c-${esc(b.id)}" data-case="${esc(b.id)}">${esc(BY[b.id].t)}</a>（${esc(b.what)}）`).join("、")||"なし"}</p><div class="go"><button data-start="idea" data-n="${n}">この案で始める</button></div></article>`).join("");
+  }catch(e){
+    const msg={not_granted:"Claudeの利用が許可されていないため、案を作れませんでした。",sampling_disabled:"このアカウントではClaudeを使えません。",rate_limited:"いまは混み合っています。少し時間をおいてもう一度押してください。",invalid_json:"答えの形が崩れました。もう一度押してください。",cancelled:""}[e?.code];
+    $("ai-status").textContent=msg??"うまく作れませんでした。もう一度押してください。";
+    if(e?.code==="not_granted"||e?.code==="sampling_disabled")$("ai").hidden=true;
+  }finally{$("ai-btn").disabled=false}
+});
+
+drawSlots();drawPicker();
+
+// ===== 進める：レールをプロジェクトにして、タスクとして進める =====
+const SECS=[["種","きっかけ"],["芽","小さく試す"],["つぼみ","最初の反応"],["花","改良して広げる"],["実","仕組みにする"]];
+const DUE_DAYS=[0,3,7,21,45];
+const COLORS=["#d2691e","#2f6fd6","#2f8f48","#7a4fd6","#c43d6b","#1f8a8a"];
+const CHECK='<svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2"><path d="M2.5 6.2l2.3 2.3 4.7-5"/></svg>';
+let P=[],curP=null,view="list",openT=null;
+try{P=JSON.parse(localStorage.getItem("tane-projects")||"[]")}catch{P=[]}
+const save=()=>{try{localStorage.setItem("tane-projects",JSON.stringify(P))}catch{}};
+const uid=()=>Math.random().toString(36).slice(2,9);
+const day=n=>{const d=new Date();d.setHours(0,0,0,0);d.setDate(d.getDate()+n);return d.toISOString().slice(0,10)};
+function dueLabel(s){if(!s)return["",""];const t=new Date(day(0)),d=new Date(s),n=Math.round((d-t)/864e5);
+  if(n<0)return[`${d.getMonth()+1}月${d.getDate()}日`,"late"];if(n===0)return["今日","today"];if(n===1)return["明日",""];
+  return[n<7?`${n}日後`:`${d.getMonth()+1}月${d.getDate()}日`,""]}
+function newProject(name,tasks){
+  const p={id:uid(),name,color:COLORS[P.length%COLORS.length],kw:{I:sel.I,A:sel.A,T:sel.T,R:lastRole},tasks};
+  P.unshift(p);save();curP=p.id;show("work");toast("プロジェクトを作りました。最初のタスクは今日の分です");
+}
+document.addEventListener("click",e=>{const b=e.target.closest("[data-start]");if(!b)return;
+  if(b.dataset.start==="rail"){
+    const tasks=[];lastSteps.forEach((st,i)=>{
+      tasks.push({id:uid(),sec:i,name:st.s,due:day(DUE_DAYS[i]),done:false,caseId:st.c.id,note:""});
+      tasks.push({id:uid(),sec:i,name:aiText(i,lastRole),ai:true,due:day(DUE_DAYS[i]+1),done:false,note:""})});
+    newProject(lastHead,tasks);
+  }else{
+    const i=lastIdeas[+b.dataset.n];if(!i)return;
+    const tasks=[{id:uid(),sec:0,name:i.today,due:day(0),done:false,note:""},{id:uid(),sec:0,name:i.ai,ai:true,due:day(1),done:false,note:""}];
+    (i.rail||[]).forEach((r,k)=>tasks.push({id:uid(),sec:Math.min(k,4),name:String(r).replace(/^(種|芽|つぼみ|花|実)[：:]\s*/,""),due:day(DUE_DAYS[Math.min(k,4)]+2),done:false,note:"",caseId:(i.borrowed||[])[0]?.id}));
+    newProject(i.name,tasks);
+  }});
+function show(v){$("v-find").hidden=v!=="find";$("v-swipe").hidden=v!=="swipe";$("v-stock").hidden=v!=="stock";if(v==="stock")drawStock();$("v-work").hidden=v!=="work";
+  document.querySelectorAll(".nav button").forEach(b=>b.setAttribute("aria-selected",b.dataset.v===v));
+  if(v==="work")drawWork();window.scrollTo({top:0,behavior:"smooth"})}
+document.querySelectorAll(".nav button").forEach(b=>b.addEventListener("click",()=>show(b.dataset.v)));
+const proj=()=>P.find(p=>p.id===curP)||P[0];
+const pct=p=>p.tasks.length?Math.round(p.tasks.filter(t=>t.done).length/p.tasks.length*100):0;
+function drawWork(){
+  $("pcount").textContent=P.length?String(P.length):"";
+  const p=proj();if(p)curP=p.id;
+  $("side").innerHTML=`<h3>プロジェクト</h3>${P.map(q=>`<button data-p="${q.id}" aria-current="${q.id===curP}"><span class="sq" style="background:${q.color}"></span><span>${esc(q.name)}</span><span class="pct">${pct(q)}%</span></button>`).join("")}<button class="new" data-go="find">＋ 新しく見つける</button>`;
+  if(!p){$("pmain").innerHTML=`<div class="emptyw">まだプロジェクトがありません。<br>「見つける」で3つ選び、「このレールで始める」を押すと、ここに並びます。</div>`;return}
+  const done=p.tasks.filter(t=>t.done).length,aiN=p.tasks.filter(t=>t.ai).length;
+  $("pmain").innerHTML=`<div class="phead"><span class="sq" style="background:${p.color}">${esc(p.name.slice(0,1))}</span><div><h2>${esc(p.name)}</h2>
+    <div class="kw">${p.kw.I?`<span class="k1">${esc(p.kw.I)}</span>`:""}${p.kw.A?`<span class="k2">${esc(p.kw.A)}</span>`:""}${p.kw.T?`<span class="k3">${esc(p.kw.T)}</span>`:""}<span class="k4">AI：${esc(p.kw.R)}</span></div></div></div>
+    <div class="prog"><div class="bar"><i style="width:${pct(p)}%"></i></div>${done}/${p.tasks.length} 完了・AIの担当 ${aiN}件</div>
+    <div class="vt" role="tablist"><button data-view="list" aria-selected="${view==="list"}">リスト</button><button data-view="board" aria-selected="${view==="board"}">ボード</button><button class="del" data-delp>このプロジェクトを消す</button></div>
+    <div id="pbody">${view==="list"?listHTML(p):boardHTML(p)}</div>`;
+}
+function meta(t){const[d,c]=dueLabel(t.due);return `<span class="meta">${t.out?`<span class="ran">AI実行済み</span>`:""}<span class="av ${t.ai?"bot":"me"}" title="${t.ai?"AIの担当":"自分の担当"}">${t.ai?"AI":"自"}</span>${d?`<span class="due ${t.done?"":c}">${d}</span>`:""}</span>`}
+function listHTML(p){return SECS.map(([st,sub],i)=>{const ts=p.tasks.filter(t=>t.sec===i);
+  return `<div class="sec" data-sec="${i}"><button data-toggle><span class="chev">▾</span><span class="st">${st}</span>${sub}<small>${ts.filter(t=>t.done).length}/${ts.length}</small></button>
+  <div class="rows">${ts.map(t=>`<div class="task${t.done?" done":""}${openT===t.id?" sel":""}" data-t="${t.id}"><button class="chk" data-chk aria-label="完了にする">${CHECK}</button><span class="nm">${esc(t.name)}</span>${meta(t)}</div>`).join("")}
+  <button class="add" data-add="${i}">＋ タスクを追加</button></div></div>`}).join("")}
+function boardHTML(p){return `<div class="board">${SECS.map(([st,sub],i)=>{const ts=p.tasks.filter(t=>t.sec===i);
+  return `<div class="col" data-col="${i}"><h4><span class="stage" style="padding:0 8px">${st}</span>${sub}<small>${ts.length}</small></h4>
+  ${ts.map(t=>`<div class="card${t.done?" done":""}" draggable="true" data-t="${t.id}"><button class="chk" data-chk aria-label="完了にする">${CHECK}</button><span class="nm">${esc(t.name)}</span>${meta(t)}</div>`).join("")}
+  <button class="add" style="padding-left:6px" data-add="${i}">＋ タスクを追加</button></div>`}).join("")}</div>`}
+function toggleDone(t,el){const p=proj();t.done=!t.done;save();
+  if(t.done){const left=p.tasks.filter(x=>x.sec===t.sec&&!x.done).length;
+    if(p.tasks.every(x=>x.done))toast("ぜんぶ終わりました。実がなりました");
+    else if(!left)toast(`「${SECS[t.sec][0]}」の段階が終わりました。次は「${SECS[t.sec+1]?.[0]||""}」です`)}
+  drawWork();if(openT)drawPane();
+  const n=document.querySelector(`[data-t="${t.id}"] .chk`);if(n&&t.done)n.classList.add("pop")}
+$("v-work").addEventListener("click",e=>{const p=proj();
+  const sp=e.target.closest("[data-p]");if(sp){curP=sp.dataset.p;openT=null;closePane();drawWork();return}
+  if(e.target.closest("[data-go]")){show("find");return}
+  const vb=e.target.closest("[data-view]");if(vb){view=vb.dataset.view;drawWork();return}
+  if(e.target.closest("[data-delp]")){if(!p)return;const b=e.target.closest("[data-delp]");
+    if(b.dataset.sure){P=P.filter(q=>q.id!==p.id);save();curP=null;closePane();drawWork()}else{b.dataset.sure="1";b.textContent="もう一度押すと消えます"}return}
+  const tg=e.target.closest("[data-toggle]");if(tg){tg.parentElement.classList.toggle("closed");return}
+  const ad=e.target.closest("[data-add]");if(ad&&!ad.querySelector("input")){const sec=+ad.dataset.add;ad.innerHTML=`<input placeholder="タスク名を入れてEnter">`;const inp=ad.querySelector("input");inp.focus();
+    inp.addEventListener("keydown",k=>{if(k.key==="Enter"&&inp.value.trim()){p.tasks.push({id:uid(),sec,name:inp.value.trim(),due:"",done:false,note:""});save();drawWork()}if(k.key==="Escape")drawWork()});
+    inp.addEventListener("blur",()=>setTimeout(()=>{if(document.activeElement!==inp)drawWork()},150));return}
+  const row=e.target.closest("[data-t]");if(!row||!p)return;const t=p.tasks.find(x=>x.id===row.dataset.t);if(!t)return;
+  if(e.target.closest("[data-chk]")){toggleDone(t);return}
+  openT=t.id;drawWork();drawPane();});
+// ボードのドラッグで段階を移す
+let drag=null;
+$("v-work").addEventListener("dragstart",e=>{const c=e.target.closest(".card");if(c){drag=c.dataset.t;e.dataTransfer.effectAllowed="move"}});
+$("v-work").addEventListener("dragover",e=>{const c=e.target.closest(".col");if(c&&drag){e.preventDefault();document.querySelectorAll(".col.over").forEach(x=>x!==c&&x.classList.remove("over"));c.classList.add("over")}});
+$("v-work").addEventListener("drop",e=>{const c=e.target.closest(".col");if(!c||!drag)return;e.preventDefault();const t=proj().tasks.find(x=>x.id===drag);if(t){t.sec=+c.dataset.col;save()}drag=null;drawWork()});
+$("v-work").addEventListener("dragend",()=>{drag=null;document.querySelectorAll(".col.over").forEach(x=>x.classList.remove("over"))});
+function drawPane(){const p=proj(),t=p&&p.tasks.find(x=>x.id===openT);if(!t){closePane();return}
+  const c=t.caseId&&BY[t.caseId];
+  $("pane").innerHTML=`<div class="bar2"><button class="done-btn${t.done?" on":""}" data-pdone>${t.done?"✓ 完了":"完了にする"}</button><button class="x2" data-close aria-label="閉じる">×</button></div>
+  <textarea class="title" rows="3" data-f="name">${esc(t.name)}</textarea>
+  <dl><dt>期日</dt><dd><input type="date" data-f="due" value="${esc(t.due)}"></dd>
+  <dt>担当</dt><dd><select data-f="ai"><option value="">自分</option><option value="1"${t.ai?" selected":""}>AI</option></select></dd>
+  <dt>段階</dt><dd><select data-f="sec">${SECS.map(([st,sub],i)=>`<option value="${i}"${i===t.sec?" selected":""}>${st}（${sub}）</option>`).join("")}</select></dd></dl>
+  ${t.ai?`<div class="runbox"><b style="color:var(--ai);font-size:.8rem;display:block;margin-bottom:6px">AIの担当タスク</b>${sample?`<button data-run>${t.out?"もう一度AIにやってもらう":"AIにやってもらう"}</button>`:`<small>この画面ではAIを呼べません。claude.ai で開くと、ここでAIが実行します。</small>`}<div class="out" id="out"${t.out?"":" hidden"}>${esc(t.out||"")}</div><small>AIの結果を読んで、よければ「完了にする」を押してください。</small></div>`:""}
+  ${c?`<div class="box c"><b>手本にした事例</b><a href="${esc(c.u)}" target="_blank" rel="noopener">${esc(c.t)}</a><br>${esc(c.w)}${c.fs?`<br><br>最初の一歩：${esc(c.fs)}`:""}${c.y?`<br>うまくいった理由：${esc(c.y)}`:""}${c.ai?`<br>AIにさせたこと：${esc(c.ai)}`:""}</div>`:""}
+  <label style="font-size:.8rem;color:var(--muted)">メモ</label><textarea rows="5" data-f="note" placeholder="やってみたこと、気づいたこと">${esc(t.note)}</textarea>
+  <p class="note" style="margin-top:12px">プロジェクトはこのブラウザだけに保存されます（試作のため）。</p>`;
+  $("pane").classList.add("open")}
+function closePane(){$("pane").classList.remove("open");openT=null;document.querySelectorAll(".task.sel").forEach(x=>x.classList.remove("sel"))}
+$("pane").addEventListener("click",e=>{if(e.target.closest("[data-close]"))closePane();
+  if(e.target.closest("[data-run]"))runAI(e.target.closest("[data-run]"));
+  if(e.target.closest("[data-pdone]")){const t=proj().tasks.find(x=>x.id===openT);if(t)toggleDone(t)}});
+$("pane").addEventListener("change",e=>{const f=e.target.dataset.f;if(!f)return;const t=proj().tasks.find(x=>x.id===openT);if(!t)return;
+  t[f]=f==="sec"?+e.target.value:f==="ai"?!!e.target.value:e.target.value;save();drawWork();if(f==="ai")drawPane()});
+$("pane").addEventListener("input",e=>{const f=e.target.dataset.f;if(f!=="note"&&f!=="name")return;const t=proj().tasks.find(x=>x.id===openT);if(t){t[f]=e.target.value;save()}});
+document.addEventListener("keydown",e=>{if(e.key==="Escape"&&openT)closePane()});
+// AIの担当タスクを、その場でAIが実行する（見ている人のClaudeを使う）
+async function runAI(btn){const p=proj(),t=p&&p.tasks.find(x=>x.id===openT);if(!t||!sample)return;
+  const c=t.caseId&&BY[t.caseId];const prev=p.tasks.filter(x=>x.sec<=t.sec&&x.id!==t.id).map(x=>`${x.done?"[済]":"[未]"} ${x.name}${x.note?"（メモ："+x.note+"）":""}`).join("\n");
+  const prompt=`あなたは、小さな仕事を始めようとしている人のチームの一員（AI担当）です。AIで仕事の形が変わること（AX）を前提にしています。
+プロジェクト：${p.name}
+キーワード：業界=${p.kw.I||"未定"}／自分の持ち物=${p.kw.A||"未定"}／相手=${p.kw.T||"未定"}／AIの役割=${p.kw.R}
+いまの段階：${SECS[t.sec][0]}（${SECS[t.sec][1]}）
+これまでのタスク：\n${prev||"なし"}
+${c?"手本の事例："+c.t+"。"+(c.ai||c.fs||""):""}
+あなたの担当タスク：${t.name}
+${t.note?"本人のメモ："+t.note:""}
+このタスクを実際にやって、成果物そのものを出してください（案の一覧、文章の下書き、質問リスト、手順書など、タスクに合うもの）。説明や前置きは短く、やさしい日本語で。最後に「次に本人がすること」を1行で書いてください。`;
+  btn.disabled=true;const out=$("out");out.hidden=false;out.textContent="考えています…";
+  try{const {text}=await sample(prompt,{cache:false,onText:({text})=>{out.textContent=text}});t.out=text;save();drawWork();drawPane();toast("AIが担当タスクをやりました。結果を確かめてください")}
+  catch(e){out.textContent=e?.text||"";const m={not_granted:"Claudeの利用が許可されていないため、実行できませんでした。",rate_limited:"いまは混み合っています。少し時間をおいてもう一度押してください。",cancelled:""}[e?.code];toast(m??"うまく実行できませんでした。もう一度押してください。")}
+  finally{btn.disabled=false}}
+let tt;function toast(m){$("toast").textContent=m;$("toast").classList.add("show");clearTimeout(tt);tt=setTimeout(()=>$("toast").classList.remove("show"),2600)}
+$("pcount").textContent=P.length?String(P.length):"";
+
+// ===== めくる：組み合わせカードを延々と出し、左右に振るだけで仕分ける =====
+const K3=["I","A","T"];
+let W={I:{},A:{},T:{},R:{}},SW={day:"",today:0,n:0,box:[],arc:[]};
+try{const x=JSON.parse(localStorage.getItem("tane-swipe")||"null");if(x){W=x.W||W;SW=Object.assign(SW,x.SW||{})}}catch{}
+if(SW.day!==day(0)){SW.day=day(0);SW.today=0}
+const swSave=()=>{try{localStorage.setItem("tane-swipe",JSON.stringify({W,SW}))}catch{}};
+const wOf=(k,v)=>W[k][v]??1;
+function pickW(k,list){const tot=list.reduce((a,v)=>a+wOf(k,v),0);let r=Math.random()*tot;for(const v of list){r-=wOf(k,v);if(r<=0)return v}return list[0]}
+function withSel(tmp,fn){const keep={...sel};Object.assign(sel,tmp);try{return fn()}finally{Object.assign(sel,keep)}}
+const cTitle=c=>`${c.I} × ${c.A} × ${c.T} × AI（${c.r}）`;
+function makeCard(){
+  for(let t=0;t<40;t++){
+    const tmp={I:pickW("I",D.ind),A:pickW("A",D.asset),T:pickW("T",D.target)};
+    const r=Math.random()<.5&&ROLE_BY_ASSET[tmp.A]?ROLE_BY_ASSET[tmp.A]:pickW("R",ROLES.slice(1));
+    const card=withSel({...tmp,R:r},()=>{const list=scored(),near=list.filter(x=>x.hit.length>=2).length;if(near<2)return null;
+      const steps=fuse(list,Math.floor(Math.random()*4));if(steps.length<5)return null;
+      return{id:uid(),...tmp,r,n:near,steps:steps.map((p,i)=>({st:p.st,s:p.s,id:p.c.id,ai:aiText(i,r)}))}});
+    if(card)return card}
+  return null}
+function cardHTML(c,back){const seed=BY[c.steps[0].id];
+  return `<div class="sc${back?" back":""}" data-kind="idea"><span class="stamp yes">ピンときた</span><span class="stamp no">アーカイブ</span>
+  <div class="face mul"><span class="m1">${esc(c.I)}</span><i>×</i><span class="m2">${esc(c.A)}</span><i>×</i><span class="m3">${esc(c.T)}</span><i>×</i><span class="m4">AI<small>${esc(c.r)}</small></span></div>
+  <div class="more1" hidden><h3>${esc(cTitle(c))}</h3><p class="why">近い事例 ${c.n}件。手本は「${esc(seed.t.slice(0,30))}${seed.t.length>30?"…":""}」</p>
+  <ol class="rail">${c.steps.map(p=>`<li><span class="stage">${p.st}</span><div><p>${esc(p.s)}</p><span class="ailine"><b>× AI</b>${esc(p.ai)}</span></div></li>`).join("")}</ol></div>
+  <p class="tap">押すと中身が見られます</p></div>`}
+// 8枚ごとに4択で好みを聞き、出るカードを寄せる
+const QS=[["A","自分に一番近いのは？"],["T","だれの役に立ちたい？"],["I","いちばん気になる業界は？"],["R","AIに任せたいのは？"]];
+function makeQ(){const [k,q]=QS[Math.floor(SW.n/15)%QS.length];const src=k==="R"?ROLES.slice(1):LISTS[k];
+  return{q:true,k,text:q,opts:[...src].sort(()=>Math.random()-.5).slice(0,4)}}
+function qHTML(c,back){return `<div class="sc q${back?" back":""}" data-kind="q"><p class="why">ちょっと質問（4択）</p><h3>${esc(c.text)}</h3>
+  <div class="qopts">${c.opts.map(o=>`<button data-qa="${esc(o)}">${esc(o)}</button>`).join("")}<button class="skip" data-qa="">どれでもない</button></div>
+  <p class="tap">答えると、次からのカードがあなた寄りになります</p></div>`}
+let deck=[];
+function fill(){while(deck.length<2){SW.n++;deck.push(SW.n%15===0?makeQ():makeCard()||makeQ())}}
+function counts(){$("sw-today").textContent=SW.today;$("sw-yes").textContent=SW.box.length;$("stkn").textContent=SW.box.length?String(SW.box.length):""}
+function drawStack(){fill();$("stack").innerHTML=(deck[1].q?qHTML(deck[1],true):cardHTML(deck[1],true))+(deck[0].q?qHTML(deck[0]):cardHTML(deck[0]));counts();bindTop()}
+function judge(yes){const c=deck[0];if(!c||c.q)return;
+  SW.today++;const bump=yes?1:-.3;K3.forEach(k=>W[k][c[k]]=Math.max(.3,wOf(k,c[k])+bump));W.R[c.r]=Math.max(.3,wOf("R",c.r)+bump);
+  if(yes){SW.box.unshift(c);if([3,10,20].includes(SW.box.length))toast(`ストックが${SW.box.length}件たまりました。「ストック」から深掘りできます`)}
+  else{SW.arc.unshift(c);SW.arc=SW.arc.slice(0,100)}
+  swSave();deck.shift();drawStack()}
+function fly(yes){const el=$("stack").lastElementChild;if(!el||el.dataset.kind!=="idea")return;
+  el.classList.add("fly");el.style.transform=`translateX(${yes?140:-140}%) rotate(${yes?18:-18}deg)`;el.style.opacity="0";
+  el.querySelector(yes?".stamp.yes":".stamp.no").style.opacity=1;setTimeout(()=>judge(yes),220)}
+function bindTop(){const el=$("stack").lastElementChild;if(!el||el.dataset.kind!=="idea")return;
+  let x0=null,dx=0,moved=false;
+  el.addEventListener("pointerdown",e=>{x0=e.clientX;dx=0;moved=false;try{el.setPointerCapture(e.pointerId)}catch{}});
+  el.addEventListener("pointermove",e=>{if(x0===null)return;dx=e.clientX-x0;if(Math.abs(dx)>6)moved=true;
+    el.style.transform=`translateX(${dx}px) rotate(${dx/18}deg)`;el.querySelector(".stamp.yes").style.opacity=Math.max(0,dx/90);el.querySelector(".stamp.no").style.opacity=Math.max(0,-dx/90)});
+  el.addEventListener("pointerup",()=>{if(x0===null)return;x0=null;
+    if(Math.abs(dx)>90){fly(dx>0);return}
+    el.classList.add("fly");el.style.transform="";el.querySelectorAll(".stamp").forEach(s=>s.style.opacity=0);setTimeout(()=>el.classList.remove("fly"),300);
+    if(!moved){const r=el.querySelector(".more1"),f=el.querySelector(".face");r.hidden=!r.hidden;f.hidden=!r.hidden;el.querySelector(".tap").textContent=r.hidden?"押すと中身が見られます":"押すと戻ります"}});
+  el.addEventListener("pointercancel",()=>{x0=null;el.style.transform=""})}
+$("stack").addEventListener("click",e=>{const b=e.target.closest("[data-qa]");if(!b)return;const c=deck[0];
+  if(b.dataset.qa){W[c.k][b.dataset.qa]=wOf(c.k,b.dataset.qa)+3;toast("次から、それに近いカードが増えます")}
+  swSave();deck.shift();drawStack()});
+$("sw-no").addEventListener("click",()=>fly(false));$("sw-yes-btn").addEventListener("click",()=>fly(true));
+document.addEventListener("keydown",e=>{if($("v-swipe").hidden||e.target.closest("input,textarea,select"))return;
+  if(e.key==="ArrowRight")fly(true);if(e.key==="ArrowLeft")fly(false)});
+// ストック：右に振ったものがたまる。たまってから深掘りする。アーカイブは見返して戻せる
+let stkTab="box";
+function drawStock(){const arr=SW[stkTab];counts();
+  $("stk").innerHTML=`<div class="vt" role="tablist"><button data-stab="box" aria-selected="${stkTab==="box"}">ストック ${SW.box.length}</button><button data-stab="arc" aria-selected="${stkTab==="arc"}">アーカイブ ${SW.arc.length}</button></div>
+  <p class="lead2">${stkTab==="box"?"右に振ったカードです。気になるものから「深掘り」すると、レールの候補やClaudeの案、元になった事例が見られます。":"左に振ったカードです。気が変わったら、ストックに戻せます。"}</p>
+  ${stkTab==="box"&&sample&&SW.box.some(c=>!c.idea)?`<div class="go" style="margin:0 0 12px"><button data-name>まだ言葉になっていない${SW.box.filter(c=>!c.idea).length}件を、Claudeが一言の案にする</button></div><p class="ai-status" id="name-st" aria-live="polite"></p>`:""}`
+  +(arr.length?arr.map(c=>`<div class="it">${c.idea?`<h4>${esc(c.idea)}</h4><p class="fs1" style="color:var(--ink)">${esc(c.why||"")}</p><p class="fs1">${esc(cTitle(c))}</p>`:`<h4>${esc(cTitle(c))}</h4>`}<p class="fs1">手本：${esc(BY[c.steps[0].id]?.t||"")}</p>
+    <div class="row1">${stkTab==="box"?`<button class="go1" data-sk="deep" data-id="${c.id}">深掘り</button><button data-sk="start" data-id="${c.id}">このまま始める</button><button data-sk="toarc" data-id="${c.id}">アーカイブへ</button>`:`<button data-sk="tobox" data-id="${c.id}">ストックに戻す</button>`}</div></div>`).join("")
+    :`<div class="emptyw">${stkTab==="box"?"まだありません。「めくる」で右に振ったカードがここにたまります。":"アーカイブは空です。"}</div>`)}
+$("v-stock").addEventListener("click",e=>{const t=e.target.closest("[data-stab]");if(t){stkTab=t.dataset.stab;drawStock();return}
+  const nb=e.target.closest("[data-name]");if(nb){nameStock(nb);return}
+  const b=e.target.closest("[data-sk]");if(!b)return;const from=b.dataset.sk==="tobox"?"arc":"box",i=SW[from].findIndex(x=>x.id===b.dataset.id),c=SW[from][i];if(!c)return;
+  if(b.dataset.sk==="toarc"||b.dataset.sk==="tobox"){SW[from].splice(i,1);SW[from==="box"?"arc":"box"].unshift(c);swSave();drawStock();return}
+  if(b.dataset.sk==="deep"){Object.assign(sel,{I:c.I,A:c.A,T:c.T,R:c.r});cur="I";drawSlots();drawPicker();show("find");update();return}
+  const tasks=[];c.steps.forEach((st,k)=>{tasks.push({id:uid(),sec:k,name:st.s,due:day(DUE_DAYS[k]),done:false,caseId:st.id,note:""});tasks.push({id:uid(),sec:k,name:st.ai,ai:true,due:day(DUE_DAYS[k]+1),done:false,note:""})});
+  withSel({I:c.I,A:c.A,T:c.T},()=>{lastRole=c.r;newProject(`${c.I}のAX：${c.T}に、${c.A}とAIで`,tasks)})});
+
+// ストックの掛け算を、Claudeがまとめて一言の案にする（1回の呼び出しで最大20件）
+async function nameStock(btn){if(!sample)return;
+  const todo=SW.box.filter(c=>!c.idea).slice(0,20).map(c=>({id:c.id,業界:c.I,自分の持ち物:c.A,相手:c.T,AIの役割:c.r,手本の事例:BY[c.steps[0].id]?.t||""}));
+  const prompt=`AIで仕事の形が変わること（AX）を前提に、次の掛け算それぞれから、普通の人が始められる小さな仕事の案を1つずつ作ってください。既存のやり方にAIを足すのではなく、AIがあるから成り立つ形にしてください。やさしい日本語で、専門用語は使いません。
+掛け算：${JSON.stringify(todo)}
+JSONの配列だけを返してください。形：[{"id":"そのまま","idea":"案の一言（25字以内）","why":"だれの何が楽になるか（40字以内）"}]`;
+  btn.disabled=true;const st=$("name-st");st.textContent="考えています…";
+  try{const res=await sample.json(prompt,{cache:false});if(!Array.isArray(res))throw{code:"invalid_json"};
+    let n=0;res.forEach(r=>{const c=SW.box.find(x=>x.id===r.id);if(c&&r.idea){c.idea=String(r.idea);c.why=String(r.why||"");n++}});
+    swSave();drawStock();toast(`${n}件を言葉にしました`)}
+  catch(e){const m={not_granted:"Claudeの利用が許可されていないため、作れませんでした。",rate_limited:"いまは混み合っています。少し時間をおいてもう一度押してください。",invalid_json:"答えの形が崩れました。もう一度押してください。",cancelled:""}[e?.code];
+    st.textContent=m??"うまく作れませんでした。もう一度押してください。";btn.disabled=false}}
+drawStack();
+</script>

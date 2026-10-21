@@ -1,0 +1,3 @@
+# ログイン確認は関数の中で行う（匿名ログインの利用者トークンを確かめる）
+[functions.ai]
+verify_jwt = false
