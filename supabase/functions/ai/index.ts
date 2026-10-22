@@ -16,7 +16,11 @@ const SYSTEM = `あなたは「たね」というアイデア支援アプリのA
 const SYSTEM_JSON = `${SYSTEM}\n答えはJSONだけを返してください。前後に説明やコードブロックの記号を付けません。`;
 
 const anthropic = new Anthropic({ apiKey: Deno.env.get("ANTHROPIC_API_KEY") });
-const admin = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+// 新しい secret key を優先し、なければ旧 service_role key を使う
+const SECRET = (() => {
+  try { return JSON.parse(Deno.env.get("SUPABASE_SECRET_KEYS") ?? "{}").default } catch { return undefined }
+})() ?? Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+const admin = createClient(Deno.env.get("SUPABASE_URL")!, SECRET, { auth: { persistSession: false } });
 
 const cors = {
   "Access-Control-Allow-Origin": ALLOW_ORIGIN,

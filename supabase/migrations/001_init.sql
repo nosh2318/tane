@@ -19,6 +19,7 @@ create policy "own state: update" on public.user_state
   for update to authenticated using (auth.uid() = user_id) with check (auth.uid() = user_id);
 create policy "own state: delete" on public.user_state
   for delete to authenticated using (auth.uid() = user_id);
+grant select, insert, update, delete on public.user_state to authenticated;
 
 -- AIを呼んだ回数（1人1日の上限を守るため）。アプリからは直接触らせない
 create table if not exists public.ai_usage (
@@ -30,6 +31,7 @@ create table if not exists public.ai_usage (
 alter table public.ai_usage enable row level security;
 create policy "own usage: select" on public.ai_usage
   for select to authenticated using (auth.uid() = user_id);
+grant select on public.ai_usage to authenticated;
 
 -- 1回分を数え、上限内なら true を返す。サーバー関数（service role）からだけ呼ぶ
 create or replace function public.ai_take(p_user uuid, p_limit int)
